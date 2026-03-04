@@ -43,9 +43,9 @@ function setupTauriInternals(invokeImpl: (cmd: string, args?: Record<string, unk
     _callbacks.set(id, cb);
     return id;
   });
-  (globalThis as Record<string, unknown>).__TAURI_INTERNALS__ = { invoke, transformCallback };
+  (globalThis as Record<string, unknown>)['__TAURI_INTERNALS__'] = { invoke, transformCallback };
   // _unlisten() em @tauri-apps/api/event.js usa __TAURI_EVENT_PLUGIN_INTERNALS__
-  (globalThis as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: vi.fn() };
+  (globalThis as Record<string, unknown>)['__TAURI_EVENT_PLUGIN_INTERNALS__'] = { unregisterListener: vi.fn() };
   return { invoke, _callbacks };
 }
 
@@ -77,8 +77,8 @@ describe('DiskService', () => {
 
   afterEach(() => {
     TestBed.resetTestingModule();
-    delete (globalThis as Record<string, unknown>).__TAURI_INTERNALS__;
-    delete (globalThis as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__;
+    delete (globalThis as Record<string, unknown>)['__TAURI_INTERNALS__'];
+    delete (globalThis as Record<string, unknown>)['__TAURI_EVENT_PLUGIN_INTERNALS__'];
   });
 
   // ─── Estado inicial ──────────────────────────────────────────────────────────

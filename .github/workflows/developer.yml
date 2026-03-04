@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Developer Branch — SNAPSHOT Build
+# Develop Branch — SNAPSHOT Build
 #
-# Trigger: push para a branch developer
+# Trigger: push para a branch develop
 #
 # Pipeline:
 #   1. Executa todos os checks de CI (via workflow reutilizável)
@@ -9,15 +9,15 @@
 #   3. Compila executáveis para todas as plataformas
 #   4. Publica artefatos com 30 dias de retenção
 # ─────────────────────────────────────────────────────────────────────────────
-name: Developer — SNAPSHOT Build
+name: Develop — SNAPSHOT Build
 
 on:
   push:
     branches:
-      - developer
+      - develop
 
 concurrency:
-  group: developer-${{ github.ref }}
+  group: develop-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

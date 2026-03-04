@@ -270,12 +270,11 @@ async fn nonexistent_directory_returns_error_or_empty() {
     let result = get_file_type_stats("/nonexistent/path/xyz_abc_does_not_exist".to_string()).await;
 
     // Must be Ok (empty) or Err – but must never panic.
-    match result {
-        Ok(stats) => assert!(
+    if let Ok(stats) = result {
+        assert!(
             stats.is_empty(),
             "Non-existent path must yield empty stats, not: {:?}",
             stats
-        ),
-        Err(_) => {} // also acceptable
+        )
     }
 }

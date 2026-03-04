@@ -264,12 +264,11 @@ async fn nonexistent_path_returns_empty_or_error() {
     // WalkDir on a non-existent path yields zero entries (no panic).
     let result = get_large_files("/nonexistent/path/xyz_abc_does_not_exist".to_string(), 10).await;
 
-    match result {
-        Ok(files) => assert!(
+    if let Ok(files) = result {
+        assert!(
             files.is_empty(),
             "Non-existent path must yield empty list, not: {:?}",
             files
-        ),
-        Err(_) => {} // also acceptable
+        )
     }
 }

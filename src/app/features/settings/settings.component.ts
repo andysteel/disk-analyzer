@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DiskService } from '../../core/services/disk.service';
 
@@ -146,7 +146,7 @@ export class SettingsComponent {
   defaultDepth = 5;
   skipHidden = true;
 
-  constructor(public disk: DiskService) {}
+  readonly disk = inject(DiskService);
 
   clearData(): void {
     this.disk.reset();

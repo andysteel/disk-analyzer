@@ -3,7 +3,6 @@
 /// These tests exercise the full command pipeline – including AppHandle
 /// injection, `spawn_blocking`, progress event emission, and recursive
 /// directory traversal – from the public API perspective.
-
 mod common;
 use common::*;
 use disk_analyzer_lib::commands::scan_directory;
@@ -213,10 +212,7 @@ async fn concurrent_scans_of_different_directories_do_not_interfere() {
     let path1 = dir1.path().to_string_lossy().to_string();
     let path2 = dir2.path().to_string_lossy().to_string();
 
-    let (r1, r2) = tokio::join!(
-        scan_directory(path1, 5, h1),
-        scan_directory(path2, 5, h2),
-    );
+    let (r1, r2) = tokio::join!(scan_directory(path1, 5, h1), scan_directory(path2, 5, h2),);
 
     assert_eq!(r1.unwrap().size, 1000);
     assert_eq!(r2.unwrap().size, 2000);
@@ -229,8 +225,12 @@ async fn nonexistent_path_returns_descriptive_error() {
     let app = create_app();
     let handle = app.handle().clone();
 
-    let result =
-        scan_directory("/nonexistent/path/xyz_abc_does_not_exist".to_string(), 5, handle).await;
+    let result = scan_directory(
+        "/nonexistent/path/xyz_abc_does_not_exist".to_string(),
+        5,
+        handle,
+    )
+    .await;
 
     assert!(result.is_err(), "Expected Err for non-existent path");
     let msg = result.unwrap_err();

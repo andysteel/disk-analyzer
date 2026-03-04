@@ -1,11 +1,11 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
 
 import { ScannerComponent } from './scanner.component';
 import { DiskService } from '../../core/services/disk.service';
-import { DiskInfo, FileNode, FileTypeStats, ScanProgress, ScanResult, ScanState } from '../../core/models/file.models';
+import { type DiskInfo, type FileNode, type ScanProgress, type ScanResult, type ScanState } from '../../core/models/file.models';
 
 // ─── Shared Mock Data ─────────────────────────────────────────────────────────
 
@@ -216,7 +216,7 @@ describe('ScannerComponent', () => {
     it('deve converter maxDepth string para número antes de chamar disk.startScan', async () => {
       await setup();
       component.manualPath = '/home/user/docs';
-      component.maxDepth = '8' as any;
+      component.maxDepth = '8' as unknown as number;
 
       await component.startScan();
 

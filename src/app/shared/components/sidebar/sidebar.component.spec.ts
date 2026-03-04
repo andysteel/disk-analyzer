@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
@@ -16,15 +16,15 @@ function setupTauriForVersion(version: string) {
     return undefined;
   });
   const transformCallback = vi.fn().mockReturnValue(0);
-  (globalThis as any).__TAURI_INTERNALS__ = { invoke, transformCallback };
+  (globalThis as Record<string, unknown>)['__TAURI_INTERNALS__'] = { invoke, transformCallback };
   // Garante que _unlisten não falhe se algum listener for criado
-  (globalThis as any).__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: vi.fn() };
+  (globalThis as Record<string, unknown>)['__TAURI_EVENT_PLUGIN_INTERNALS__'] = { unregisterListener: vi.fn() };
   return { invoke };
 }
 
 import { SidebarComponent } from './sidebar.component';
 import { DiskService } from '../../../core/services/disk.service';
-import { DiskInfo, FileNode, FileTypeStats, ScanProgress, ScanResult, ScanState } from '../../../core/models/file.models';
+import { type DiskInfo, type FileNode, type ScanProgress, type ScanResult, type ScanState } from '../../../core/models/file.models';
 
 // ─── Shared Mock Data ─────────────────────────────────────────────────────────
 
@@ -99,8 +99,8 @@ describe('SidebarComponent', () => {
 
   afterEach(() => {
     TestBed.resetTestingModule();
-    delete (globalThis as any).__TAURI_INTERNALS__;
-    delete (globalThis as any).__TAURI_EVENT_PLUGIN_INTERNALS__;
+    delete (globalThis as Record<string, unknown>)['__TAURI_INTERNALS__'];
+    delete (globalThis as Record<string, unknown>)['__TAURI_EVENT_PLUGIN_INTERNALS__'];
   });
 
   // ─── Criação ─────────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ describe('SidebarComponent', () => {
 
     it('deve expor o DiskService via propriedade pública "disk"', async () => {
       await setup();
-      expect(component.disk).toBe(mockDisk as any);
+      expect(component.disk).toBe(mockDisk);
     });
   });
 
@@ -137,7 +137,8 @@ describe('SidebarComponent', () => {
       await setup(null, '', '1.0.0');
       await flushAllMicrotasks();
       // O __TAURI_INTERNALS__.invoke configurado dentro de setup() deve ter sido chamado
-      const invoke = (globalThis as any).__TAURI_INTERNALS__?.invoke;
+      const internals = (globalThis as unknown as Record<string, Record<string, unknown> | undefined>)['__TAURI_INTERNALS__'];
+      const invoke = internals?.['invoke'];
       if (invoke) {
         // invoke() usa args = {} como padrão quando não há argumentos
         expect(invoke).toHaveBeenCalledWith('plugin:app|version', {}, undefined);

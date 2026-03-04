@@ -2,7 +2,6 @@
 ///
 /// Verifies the full aggregation pipeline: recursive walk, extension grouping,
 /// color mapping, size accumulation, sorting, and top-20 truncation.
-
 mod common;
 use common::*;
 
@@ -17,7 +16,10 @@ async fn empty_directory_returns_empty_vec() {
     let dir = TempDir::new().unwrap();
     let result = get_file_type_stats(dir.path().to_string_lossy().to_string()).await;
     assert!(result.is_ok());
-    assert!(result.unwrap().is_empty(), "Empty directory must yield empty stats");
+    assert!(
+        result.unwrap().is_empty(),
+        "Empty directory must yield empty stats"
+    );
 }
 
 #[tokio::test]
@@ -64,7 +66,10 @@ async fn files_in_subdirectories_are_included_in_stats() {
         .unwrap();
 
     let rs = stats.iter().find(|s| s.extension == "rs").unwrap();
-    assert_eq!(rs.count, 2, "Both root and nested .rs files must be counted");
+    assert_eq!(
+        rs.count, 2,
+        "Both root and nested .rs files must be counted"
+    );
 }
 
 #[tokio::test]
@@ -78,7 +83,10 @@ async fn files_without_extension_are_grouped_as_other() {
         .unwrap();
 
     let other = stats.iter().find(|s| s.extension == "other");
-    assert!(other.is_some(), "Files without extension must appear under 'other'");
+    assert!(
+        other.is_some(),
+        "Files without extension must appear under 'other'"
+    );
     assert_eq!(other.unwrap().count, 2);
 }
 
@@ -113,7 +121,11 @@ async fn extension_is_normalized_to_lowercase() {
         .unwrap();
 
     let jpg = stats.iter().find(|s| s.extension == "jpg");
-    assert!(jpg.is_some(), "Extension must be lowercased: found {:?}", stats);
+    assert!(
+        jpg.is_some(),
+        "Extension must be lowercased: found {:?}",
+        stats
+    );
 }
 
 #[tokio::test]
@@ -172,7 +184,10 @@ async fn unknown_extension_receives_default_color() {
         .await
         .unwrap();
 
-    assert_eq!(stats[0].color, "#94A3B8", "Unknown extension must use default color");
+    assert_eq!(
+        stats[0].color, "#94A3B8",
+        "Unknown extension must use default color"
+    );
 }
 
 #[tokio::test]
@@ -252,16 +267,14 @@ async fn complex_tree_produces_correct_extension_grouping() {
 async fn nonexistent_directory_returns_error_or_empty() {
     // WalkDir over a nonexistent path silently produces zero entries in some
     // versions, or may error. We verify the command does not panic.
-    let result =
-        get_file_type_stats("/nonexistent/path/xyz_abc_does_not_exist".to_string()).await;
+    let result = get_file_type_stats("/nonexistent/path/xyz_abc_does_not_exist".to_string()).await;
 
     // Must be Ok (empty) or Err – but must never panic.
-    match result {
-        Ok(stats) => assert!(
+    if let Ok(stats) = result {
+        assert!(
             stats.is_empty(),
             "Non-existent path must yield empty stats, not: {:?}",
             stats
-        ),
-        Err(_) => {} // also acceptable
+        )
     }
 }

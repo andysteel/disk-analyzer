@@ -2,7 +2,6 @@
 ///
 /// Tests the complete disk-info pipeline: system call (statvfs / Win32 API),
 /// arithmetic invariants, formatted output, and error handling.
-
 mod common;
 
 use disk_analyzer_lib::commands::get_disk_info;
@@ -12,7 +11,11 @@ use disk_analyzer_lib::commands::get_disk_info;
 #[tokio::test]
 async fn valid_path_returns_ok() {
     let result = get_disk_info("/tmp".to_string()).await;
-    assert!(result.is_ok(), "get_disk_info('/tmp') must succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "get_disk_info('/tmp') must succeed: {:?}",
+        result
+    );
 }
 
 #[tokio::test]
@@ -72,9 +75,18 @@ async fn usage_percent_is_consistent_with_used_and_total() {
 #[tokio::test]
 async fn all_formatted_strings_are_non_empty() {
     let info = get_disk_info("/tmp".to_string()).await.unwrap();
-    assert!(!info.total_formatted.is_empty(), "total_formatted must not be empty");
-    assert!(!info.available_formatted.is_empty(), "available_formatted must not be empty");
-    assert!(!info.used_formatted.is_empty(), "used_formatted must not be empty");
+    assert!(
+        !info.total_formatted.is_empty(),
+        "total_formatted must not be empty"
+    );
+    assert!(
+        !info.available_formatted.is_empty(),
+        "available_formatted must not be empty"
+    );
+    assert!(
+        !info.used_formatted.is_empty(),
+        "used_formatted must not be empty"
+    );
 }
 
 #[tokio::test]
@@ -82,9 +94,17 @@ async fn formatted_strings_contain_a_size_unit() {
     let info = get_disk_info("/tmp".to_string()).await.unwrap();
     let units = ["B", "KB", "MB", "GB", "TB"];
 
-    for field in [&info.total_formatted, &info.available_formatted, &info.used_formatted] {
+    for field in [
+        &info.total_formatted,
+        &info.available_formatted,
+        &info.used_formatted,
+    ] {
         let has_unit = units.iter().any(|u| field.contains(u));
-        assert!(has_unit, "Formatted string '{}' must contain a size unit", field);
+        assert!(
+            has_unit,
+            "Formatted string '{}' must contain a size unit",
+            field
+        );
     }
 }
 
@@ -98,7 +118,11 @@ async fn path_field_echoes_the_input() {
 async fn scanning_root_filesystem_succeeds() {
     // Tests that a real filesystem root can be queried without panicking.
     let result = get_disk_info("/".to_string()).await;
-    assert!(result.is_ok(), "get_disk_info('/') must succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "get_disk_info('/') must succeed: {:?}",
+        result
+    );
 }
 
 #[tokio::test]

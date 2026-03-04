@@ -1,14 +1,15 @@
 import {
-  AfterViewInit,
+  type AfterViewInit,
   Component,
   effect,
-  ElementRef,
+  type ElementRef,
+  inject,
   ViewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import * as d3 from 'd3';
 import { DiskService } from '../../core/services/disk.service';
-import { FileNode } from '../../core/models/file.models';
+import { type FileNode } from '../../core/models/file.models';
 import { DecimalPipe } from '@angular/common';
 
 @Component({
@@ -279,9 +280,12 @@ import { DecimalPipe } from '@angular/common';
 export class DashboardComponent implements AfterViewInit {
   @ViewChild('treemapEl') treemapEl!: ElementRef<HTMLDivElement>;
 
+  readonly disk = inject(DiskService);
+  private readonly router = inject(Router);
+
   private currentNode: FileNode | null = null;
 
-  constructor(public disk: DiskService, private router: Router) {
+  constructor() {
     effect(() => {
       const result = this.disk.scanResult();
       if (result && this.treemapEl) {

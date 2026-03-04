@@ -1,0 +1,71 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dependabot — Atualização automática de dependências
+# ─────────────────────────────────────────────────────────────────────────────
+version: 2
+
+updates:
+  # ── npm (Angular, Tauri JS SDK) ──────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 10
+    target-branch: developer
+    labels:
+      - dependencies
+      - javascript
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
+          - "@angular-eslint/*"
+      tauri-js:
+        patterns:
+          - "@tauri-apps/*"
+      testing:
+        patterns:
+          - "vitest"
+          - "jsdom"
+    ignore:
+      # Ignorar major versions — fazer manualmente
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ── Cargo (Rust / Tauri) ─────────────────────────────────────────────────
+  - package-ecosystem: cargo
+    directory: "/src-tauri"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 10
+    target-branch: developer
+    labels:
+      - dependencies
+      - rust
+    groups:
+      tauri:
+        patterns:
+          - "tauri"
+          - "tauri-*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ── GitHub Actions ───────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 5
+    target-branch: developer
+    labels:
+      - dependencies
+      - ci

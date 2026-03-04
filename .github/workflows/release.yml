@@ -1,0 +1,180 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Release — Build Estável
+#
+# Trigger: push de tag v* (gerado pelo workflow release-create-tag.yml)
+#
+# Pipeline:
+#   1. Executa todos os checks de CI (lint + test + build)
+#   2. Compila executáveis para todas as plataformas em modo release
+#   3. Cria GitHub Release com os artefatos publicados
+#   4. Gera changelog automático baseado nos commits desde a última tag
+# ─────────────────────────────────────────────────────────────────────────────
+name: Release — Build Estável
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  # ───── Etapa 1: Validação completa de CI ─────────────────────────────────
+  ci:
+    name: CI Checks
+    uses: ./.github/workflows/_reusable-ci.yml
+    secrets: inherit
+
+  # ───── Etapa 2: Extração de metadados da release ─────────────────────────
+  metadata:
+    name: 📋 Metadados da Release
+    runs-on: ubuntu-22.04
+    needs: ci
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      release-name: ${{ steps.meta.outputs.release-name }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    steps:
+      - name: Checkout (histórico completo)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extrair metadados
+        id: meta
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}"                     >> "$GITHUB_OUTPUT"
+          echo "release-name=Disk Analyzer ${VERSION}"  >> "$GITHUB_OUTPUT"
+
+      - name: Gerar changelog automático
+        id: changelog
+        run: |
+          PREVIOUS_TAG=$(git tag --sort=-version:refname \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sed -n '2p')
+          CURRENT_TAG="${GITHUB_REF_NAME}"
+
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            RANGE="${PREVIOUS_TAG}..${CURRENT_TAG}"
+          else
+            RANGE="${CURRENT_TAG}"
+          fi
+
+          CHANGELOG=$(git log "$RANGE" \
+            --pretty=format:"- %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" \
+            --no-merges | head -50)
+
+          # Escapa para output multiline
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+
+          echo "changelog=${CHANGELOG}" >> "$GITHUB_OUTPUT"
+
+  # ───── Etapa 3: Build multi-plataforma ───────────────────────────────────
+  build-release:
+    name: 🔨 Build Estável [${{ matrix.artifact }}]
+    runs-on: ${{ matrix.platform }}
+    needs: [metadata]
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            artifact: linux-x64
+            tauri-args: ""
+            rust-targets: ""
+          - platform: windows-latest
+            artifact: windows-x64
+            tauri-args: ""
+            rust-targets: ""
+          - platform: macos-latest
+            artifact: macos-arm64
+            tauri-args: "--target aarch64-apple-darwin"
+            rust-targets: "aarch64-apple-darwin"
+          - platform: macos-latest
+            artifact: macos-x64
+            tauri-args: "--target x86_64-apple-darwin"
+            rust-targets: "x86_64-apple-darwin"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar toolchain Rust estável
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - name: Instalar dependências do sistema (Ubuntu)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Cache Rust (release)
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: release-${{ matrix.artifact }}
+          cache-on-failure: false
+
+      - name: Instalar dependências npm
+        run: npm ci
+
+      - name: Build Tauri e publicar GitHub Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: ${{ needs.metadata.outputs.release-name }}
+          releaseBody: |
+            ## 🚀 ${{ needs.metadata.outputs.release-name }}
+
+            ### Alterações nesta versão
+
+            ${{ needs.metadata.outputs.changelog }}
+
+            ---
+            Baixe o instalador para a sua plataforma nos **Assets** abaixo.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.tauri-args }}
+
+  # ───── Sumário da release ─────────────────────────────────────────────────
+  release-summary:
+    name: 📋 Sumário da Release
+    runs-on: ubuntu-22.04
+    needs: [metadata, build-release]
+    if: always()
+    steps:
+      - name: Publicar sumário no GitHub
+        run: |
+          VERSION="${{ needs.metadata.outputs.version }}"
+          STATUS="${{ needs.build-release.result }}"
+          ICON=$( [[ "$STATUS" == "success" ]] && echo "✅" || echo "❌" )
+          {
+            echo "## 🚀 Release Estável — \`v${VERSION}\`"
+            echo ""
+            echo "| Plataforma     | Status |"
+            echo "|----------------|--------|"
+            echo "| Linux x64      | ${ICON} |"
+            echo "| Windows x64    | ${ICON} |"
+            echo "| macOS ARM64    | ${ICON} |"
+            echo "| macOS x64      | ${ICON} |"
+            echo ""
+            echo "[📦 Ver Release no GitHub](https://github.com/${{ github.repository }}/releases/tag/v${VERSION})"
+          } >> "$GITHUB_STEP_SUMMARY"

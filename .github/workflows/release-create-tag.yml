@@ -1,0 +1,150 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Release — Geração de Tag de Versão Estável
+#
+# Trigger: workflow_dispatch (manual) executado a partir de uma branch release/*
+#
+# Pipeline:
+#   1. Valida que está sendo executado a partir de uma branch release/*
+#   2. Extrai a versão da branch (release/1.2.3 → 1.2.3)
+#   3. Valida consistência dos manifests (package.json e tauri.conf.json)
+#   4. Cria e publica a tag v{version} no repositório
+#   5. A tag dispara automaticamente o workflow release.yml
+#
+# Como usar:
+#   1. Finalize as alterações na branch release/x.y.z
+#   2. Abra Actions → "Release — Criar Tag" → Run workflow
+#   3. Selecione a branch release/x.y.z e confirme
+#   4. Aguarde a tag ser criada e o build estável iniciar
+# ─────────────────────────────────────────────────────────────────────────────
+name: Release — Criar Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Digite CONFIRMAR para criar a tag de release"
+        required: true
+        type: string
+
+jobs:
+  validate-and-tag:
+    name: 🏷️ Validar e Criar Tag
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Validar confirmação
+        run: |
+          if [[ "${{ github.event.inputs.confirm }}" != "CONFIRMAR" ]]; then
+            echo "❌ Você precisa digitar CONFIRMAR para prosseguir."
+            exit 1
+          fi
+
+      - name: Validar branch de origem
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          if [[ ! "$BRANCH" =~ ^release/ ]]; then
+            echo "❌ Este workflow só pode ser executado a partir de uma branch release/*"
+            echo "   Branch atual: $BRANCH"
+            exit 1
+          fi
+          echo "✅ Branch válida: $BRANCH"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Extrair e validar versão
+        id: versao
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+
+          # Versão extraída do nome da branch (release/1.2.3 → 1.2.3)
+          BRANCH_VERSION="${BRANCH#release/}"
+
+          # Versão em package.json
+          PKG_VERSION=$(node -p "require('./package.json').version")
+
+          # Versão em tauri.conf.json
+          TAURI_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+
+          echo "──────────────────────────────────────────────────"
+          echo "  Branch:          $BRANCH"
+          echo "  Versão (branch): $BRANCH_VERSION"
+          echo "  Versão (pkg):    $PKG_VERSION"
+          echo "  Versão (tauri):  $TAURI_VERSION"
+          echo "──────────────────────────────────────────────────"
+
+          # Validar consistência
+          if [[ "$BRANCH_VERSION" != "$PKG_VERSION" ]]; then
+            echo "❌ Versão no package.json ($PKG_VERSION) não corresponde à branch ($BRANCH_VERSION)"
+            exit 1
+          fi
+
+          if [[ "$BRANCH_VERSION" != "$TAURI_VERSION" ]]; then
+            echo "❌ Versão no tauri.conf.json ($TAURI_VERSION) não corresponde à branch ($BRANCH_VERSION)"
+            exit 1
+          fi
+
+          # Validar formato semver (X.Y.Z sem pré-release)
+          if [[ ! "$BRANCH_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Formato de versão inválido: '$BRANCH_VERSION'. Use X.Y.Z (ex: 1.2.3)"
+            exit 1
+          fi
+
+          TAG="v${BRANCH_VERSION}"
+
+          # Verificar se a tag já existe
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
+            echo "❌ Tag $TAG já existe no repositório!"
+            exit 1
+          fi
+
+          echo "version=${BRANCH_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "✅ Validação concluída — Tag a ser criada: $TAG"
+
+      - name: Configurar git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Criar e publicar tag anotada
+        run: |
+          TAG="${{ steps.versao.outputs.tag }}"
+          VERSION="${{ steps.versao.outputs.version }}"
+
+          git tag -a "$TAG" \
+            -m "Release ${VERSION}" \
+            -m "Branch de origem: ${GITHUB_REF_NAME}" \
+            -m "Commit: ${GITHUB_SHA}"
+
+          git push origin "$TAG"
+
+          echo "✅ Tag $TAG criada e publicada com sucesso!"
+          echo "🚀 O workflow de build estável será iniciado automaticamente."
+
+      - name: Publicar sumário
+        run: |
+          TAG="${{ steps.versao.outputs.tag }}"
+          VERSION="${{ steps.versao.outputs.version }}"
+          {
+            echo "## 🏷️ Tag de Release Criada"
+            echo ""
+            echo "| Campo   | Valor |"
+            echo "|---------|-------|"
+            echo "| Tag     | \`${TAG}\` |"
+            echo "| Versão  | \`${VERSION}\` |"
+            echo "| Branch  | \`${GITHUB_REF_NAME}\` |"
+            echo "| Commit  | \`${GITHUB_SHA::8}\` |"
+            echo ""
+            echo "O workflow **Release — Build Estável** foi iniciado automaticamente."
+          } >> "$GITHUB_STEP_SUMMARY"

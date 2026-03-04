@@ -1,0 +1,200 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Workflow Reutilizável de CI
+# Executado por: ci.yml e developer.yml
+# Contém todos os passos de lint, teste e verificação de build
+# ─────────────────────────────────────────────────────────────────────────────
+name: Reusable CI
+
+on:
+  workflow_call:
+    outputs:
+      status:
+        description: "Status geral do CI"
+        value: ${{ jobs.ci-gate.outputs.status }}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ───── Rust: Formatação e Clippy ─────────────────────────────────────────
+  lint-rust:
+    name: 🦀 Lint Rust (fmt + clippy)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências do sistema (Ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Instalar toolchain Rust estável
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+
+      - name: Verificar formatação (rustfmt)
+        working-directory: src-tauri
+        run: cargo fmt --all -- --check
+
+      - name: Executar Clippy (zero warnings)
+        working-directory: src-tauri
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # ───── Angular: ESLint ───────────────────────────────────────────────────
+  lint-angular:
+    name: 🅰️ Lint Angular (ESLint)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Executar ESLint
+        run: npm run lint
+
+  # ───── Rust: Testes unitários ────────────────────────────────────────────
+  test-rust:
+    name: 🦀 Testes Rust
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências do sistema (Ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Instalar toolchain Rust estável
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+
+      - name: Executar testes unitários
+        working-directory: src-tauri
+        run: cargo test --all-features -- --test-threads=4
+
+  # ───── Angular: Testes unitários ─────────────────────────────────────────
+  test-angular:
+    name: 🅰️ Testes Angular (Vitest)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Executar testes unitários
+        run: npm test
+
+  # ───── Angular: Verificação de build ─────────────────────────────────────
+  build-angular:
+    name: 🅰️ Build Angular
+    runs-on: ubuntu-22.04
+    needs: [lint-angular, test-angular]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build Angular (produção)
+        run: npm run build
+
+  # ───── Rust: Verificação de compilação ───────────────────────────────────
+  check-rust:
+    name: 🦀 Verificar Compilação Rust
+    runs-on: ubuntu-22.04
+    needs: [lint-rust, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências do sistema (Ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Instalar toolchain Rust estável
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+
+      - name: Verificar compilação (cargo check)
+        working-directory: src-tauri
+        run: cargo check --all-targets --all-features
+
+  # ───── Gate: Status unificado ─────────────────────────────────────────────
+  # Único status check necessário nas branch protection rules do GitHub:
+  # "Reusable CI / ✅ CI Gate"
+  ci-gate:
+    name: ✅ CI Gate
+    runs-on: ubuntu-22.04
+    needs: [lint-rust, lint-angular, test-rust, test-angular, build-angular, check-rust]
+    if: always()
+    outputs:
+      status: ${{ steps.resultado.outputs.status }}
+    steps:
+      - name: Avaliar resultado
+        id: resultado
+        run: |
+          RESULTS="${{ join(needs.*.result, ',') }}"
+          echo "Resultados dos jobs: $RESULTS"
+          if echo "$RESULTS" | grep -qE "failure|cancelled"; then
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "❌ Um ou mais jobs falharam."
+            exit 1
+          fi
+          echo "status=success" >> "$GITHUB_OUTPUT"
+          echo "✅ Todos os jobs passaram com sucesso."

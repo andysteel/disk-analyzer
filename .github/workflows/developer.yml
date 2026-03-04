@@ -1,0 +1,185 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Developer Branch — SNAPSHOT Build
+#
+# Trigger: push para a branch developer
+#
+# Pipeline:
+#   1. Executa todos os checks de CI (via workflow reutilizável)
+#   2. Gera versão SNAPSHOT: {version}-snapshot.{YYYYMMDD}.{SHORT_SHA}
+#   3. Compila executáveis para todas as plataformas
+#   4. Publica artefatos com 30 dias de retenção
+# ─────────────────────────────────────────────────────────────────────────────
+name: Developer — SNAPSHOT Build
+
+on:
+  push:
+    branches:
+      - developer
+
+concurrency:
+  group: developer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ───── Etapa 1: Validação completa de CI ─────────────────────────────────
+  ci:
+    name: CI Checks
+    uses: ./.github/workflows/_reusable-ci.yml
+    secrets: inherit
+
+  # ───── Etapa 2: Geração da versão SNAPSHOT ────────────────────────────────
+  snapshot-version:
+    name: 📦 Gerar Versão SNAPSHOT
+    runs-on: ubuntu-22.04
+    needs: ci
+    outputs:
+      version: ${{ steps.gerar.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Gerar versão SNAPSHOT
+        id: gerar
+        run: |
+          BASE_VERSION=$(node -p "require('./package.json').version")
+          SHORT_SHA="${GITHUB_SHA::8}"
+          DATE=$(date -u +'%Y%m%d')
+          SNAPSHOT="${BASE_VERSION}-snapshot.${DATE}.${SHORT_SHA}"
+
+          echo "version=${SNAPSHOT}" >> "$GITHUB_OUTPUT"
+          echo "──────────────────────────────────────────"
+          echo "  Versão SNAPSHOT gerada: ${SNAPSHOT}"
+          echo "──────────────────────────────────────────"
+
+  # ───── Etapa 3: Build multi-plataforma dos executáveis ────────────────────
+  build-snapshot:
+    name: 🔨 Build SNAPSHOT [${{ matrix.artifact }}]
+    runs-on: ${{ matrix.platform }}
+    needs: snapshot-version
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            artifact: linux-x64
+            tauri-args: ""
+            rust-targets: ""
+          - platform: windows-latest
+            artifact: windows-x64
+            tauri-args: ""
+            rust-targets: ""
+          - platform: macos-latest
+            artifact: macos-arm64
+            tauri-args: "--target aarch64-apple-darwin"
+            rust-targets: "aarch64-apple-darwin"
+          - platform: macos-latest
+            artifact: macos-x64
+            tauri-args: "--target x86_64-apple-darwin"
+            rust-targets: "x86_64-apple-darwin"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar toolchain Rust estável
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - name: Instalar dependências do sistema (Ubuntu)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+
+      - name: Instalar dependências npm
+        run: npm ci
+
+      - name: Aplicar versão SNAPSHOT nos manifests
+        shell: bash
+        env:
+          SNAPSHOT_VERSION: ${{ needs.snapshot-version.outputs.version }}
+        run: |
+          # package.json
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = process.env.SNAPSHOT_VERSION;
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          # tauri.conf.json
+          node -e "
+            const fs = require('fs');
+            const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            conf.version = process.env.SNAPSHOT_VERSION;
+            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+          "
+
+          echo "✅ Versão aplicada: $SNAPSHOT_VERSION"
+
+      - name: Build Tauri (SNAPSHOT)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.tauri-args }}
+
+      - name: Upload artefatos SNAPSHOT
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-${{ matrix.artifact }}-${{ needs.snapshot-version.outputs.version }}
+          # Captura bundles de todas as plataformas e targets
+          path: |
+            src-tauri/target/release/bundle/**
+            src-tauri/target/*/release/bundle/**
+          if-no-files-found: error
+          retention-days: 30
+
+  # ───── Sumário do build SNAPSHOT ─────────────────────────────────────────
+  snapshot-summary:
+    name: 📋 Sumário SNAPSHOT
+    runs-on: ubuntu-22.04
+    needs: [snapshot-version, build-snapshot]
+    if: always()
+    steps:
+      - name: Publicar sumário no GitHub
+        run: |
+          VERSION="${{ needs.snapshot-version.outputs.version }}"
+          STATUS="${{ needs.build-snapshot.result }}"
+
+          {
+            echo "## 📦 SNAPSHOT Build — \`${VERSION}\`"
+            echo ""
+            echo "| Plataforma     | Status |"
+            echo "|----------------|--------|"
+            echo "| Linux x64      | $( [[ "$STATUS" == "success" ]] && echo "✅" || echo "❌" ) |"
+            echo "| Windows x64    | $( [[ "$STATUS" == "success" ]] && echo "✅" || echo "❌" ) |"
+            echo "| macOS ARM64    | $( [[ "$STATUS" == "success" ]] && echo "✅" || echo "❌" ) |"
+            echo "| macOS x64      | $( [[ "$STATUS" == "success" ]] && echo "✅" || echo "❌" ) |"
+            echo ""
+            echo "> Artefatos ficam disponíveis por **30 dias** na aba Actions."
+          } >> "$GITHUB_STEP_SUMMARY"

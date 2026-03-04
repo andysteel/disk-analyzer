@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CI — Branches de desenvolvimento e validação de Pull Requests
+#
+# Triggers:
+#   Push  → feature/*, fix/*, hotfix/*, patch/*, release/*
+#   PR    → developer, main, release/*
+#
+# Para exigir aprovação dos PRs configure Branch Protection Rules no GitHub:
+#   Settings → Branches → Add rule → Require status checks:
+#     "Reusable CI / ✅ CI Gate"
+# ─────────────────────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+    branches:
+      - "feature/**"
+      - "fix/**"
+      - "hotfix/**"
+      - "patch/**"
+      - "release/**"
+  pull_request:
+    branches:
+      - developer
+      - main
+      - "release/**"
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+# Cancela runs anteriores do mesmo branch/PR para economizar recursos
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Reusable CI
+    uses: ./.github/workflows/_reusable-ci.yml
+    secrets: inherit

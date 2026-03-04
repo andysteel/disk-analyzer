@@ -193,9 +193,9 @@ pub async fn get_disk_info(path: String) -> Result<DiskInfo, String> {
         if result != 0 {
             return Err("Failed to get disk info".to_string());
         }
-        let block_size = stat.f_frsize as u64;
-        let total = stat.f_blocks as u64 * block_size;
-        let available = stat.f_bavail as u64 * block_size;
+        let block_size = stat.f_frsize;
+        let total = stat.f_blocks * block_size;
+        let available = stat.f_bavail * block_size;
         let used = total - available;
         let percent = if total > 0 {
             (used as f64 / total as f64) * 100.0

@@ -27,23 +27,25 @@ const mockScanResult: ScanResult = {
 // @angular/build:unit-test desabilita vi.mock(). Mockamos via window.__TAURI_INTERNALS__
 // que é o ponto de entrada de TODAS as APIs do Tauri v2 (invoke, listen, open, getVersion).
 
+type Callback = (...args: unknown[]) => unknown;
+
 interface TauriMock {
   invoke: ReturnType<typeof vi.fn>;
-  _callbacks: Map<number, Function>;
+  _callbacks: Map<number, Callback>;
 }
 
 function setupTauriInternals(invokeImpl: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>): TauriMock {
   let cbId = 0;
-  const _callbacks = new Map<number, Function>();
+  const _callbacks = new Map<number, Callback>();
   const invoke = vi.fn().mockImplementation(invokeImpl);
-  const transformCallback = vi.fn().mockImplementation((cb: Function) => {
+  const transformCallback = vi.fn().mockImplementation((cb: Callback) => {
     const id = cbId++;
     _callbacks.set(id, cb);
     return id;
   });
-  (globalThis as any).__TAURI_INTERNALS__ = { invoke, transformCallback };
+  (globalThis as Record<string, unknown>).__TAURI_INTERNALS__ = { invoke, transformCallback };
   // _unlisten() em @tauri-apps/api/event.js usa __TAURI_EVENT_PLUGIN_INTERNALS__
-  (globalThis as any).__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: vi.fn() };
+  (globalThis as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: vi.fn() };
   return { invoke, _callbacks };
 }
 
@@ -75,8 +77,8 @@ describe('DiskService', () => {
 
   afterEach(() => {
     TestBed.resetTestingModule();
-    delete (globalThis as any).__TAURI_INTERNALS__;
-    delete (globalThis as any).__TAURI_EVENT_PLUGIN_INTERNALS__;
+    delete (globalThis as Record<string, unknown>).__TAURI_INTERNALS__;
+    delete (globalThis as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__;
   });
 
   // ─── Estado inicial ──────────────────────────────────────────────────────────
@@ -159,7 +161,7 @@ describe('DiskService', () => {
     });
 
     it('deve converter maxDepth string para número', async () => {
-      await service.startScan('/home/user', '8' as any);
+      await service.startScan('/home/user', '8' as unknown as number);
       expect(tauri.invoke).toHaveBeenCalledWith('scan_directory', { path: '/home/user', maxDepth: 8 }, undefined);
     });
 
@@ -243,7 +245,6 @@ describe('DiskService', () => {
       setupTauriInternals(async (cmd) => {
         if (cmd === 'plugin:event|listen') return 0;
         if (cmd === 'plugin:event|unlisten') return undefined;
-        // eslint-disable-next-line @typescript-eslint/no-throw-literal
         throw 'string-error';
       });
       await service.startScan('/home/user', 5);

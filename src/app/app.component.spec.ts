@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { Component } from '@angular/core';
@@ -7,15 +7,15 @@ import { vi } from 'vitest';
 import { AppComponent } from './app.component';
 import { RouterOutlet } from '@angular/router';
 import { DiskService } from './core/services/disk.service';
-import { ScanProgress, ScanResult, ScanState } from './core/models/file.models';
+import { type ScanProgress, type ScanResult, type ScanState } from './core/models/file.models';
 
 // Garante que qualquer chamada Tauri durante importação de módulos não exploda
 function setupTauriStubs() {
-  (globalThis as any).__TAURI_INTERNALS__ = {
+  (globalThis as Record<string, unknown>).__TAURI_INTERNALS__ = {
     invoke: vi.fn().mockResolvedValue(undefined),
     transformCallback: vi.fn().mockReturnValue(0),
   };
-  (globalThis as any).__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: vi.fn() };
+  (globalThis as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: vi.fn() };
 }
 
 // ─── Stub do SidebarComponent ──────────────────────────────────────────────────
@@ -70,8 +70,8 @@ describe('AppComponent', () => {
 
   afterEach(() => {
     TestBed.resetTestingModule();
-    delete (globalThis as any).__TAURI_INTERNALS__;
-    delete (globalThis as any).__TAURI_EVENT_PLUGIN_INTERNALS__;
+    delete (globalThis as Record<string, unknown>).__TAURI_INTERNALS__;
+    delete (globalThis as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__;
   });
 
   // ─── Criação ─────────────────────────────────────────────────────────────────

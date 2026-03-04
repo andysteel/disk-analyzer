@@ -1,11 +1,11 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
 
 import { DashboardComponent } from './dashboard.component';
 import { DiskService } from '../../core/services/disk.service';
-import { DiskInfo, FileNode, FileTypeStats, ScanProgress, ScanResult, ScanState } from '../../core/models/file.models';
+import { type DiskInfo, type FileNode, type FileTypeStats, type ScanProgress, type ScanResult, type ScanState } from '../../core/models/file.models';
 
 // ─── Shared Mock Data ─────────────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ describe('DashboardComponent', () => {
 
     it('deve expor o DiskService via propriedade pública "disk"', async () => {
       await setup();
-      expect(component.disk).toBe(mockDisk as any);
+      expect(component.disk).toBe(mockDisk);
     });
   });
 

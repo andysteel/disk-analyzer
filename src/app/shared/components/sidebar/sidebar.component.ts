@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { DiskService } from '../../../core/services/disk.service';
 import { DatePipe } from '@angular/common';
@@ -119,7 +119,9 @@ import { getVersion } from '@tauri-apps/api/app';
 export class SidebarComponent {
   appVersion = signal('...');
 
-  constructor(public disk: DiskService) {
+  readonly disk = inject(DiskService);
+
+  constructor() {
     getVersion().then(v => this.appVersion.set(v));
   }
 }

@@ -3,12 +3,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import {
-  DiskInfo,
-  FileNode,
-  FileTypeStats,
-  ScanProgress,
-  ScanResult,
-  ScanState,
+  type DiskInfo,
+  type FileNode,
+  type FileTypeStats,
+  type ScanProgress,
+  type ScanResult,
+  type ScanState,
 } from '../models/file.models';
 
 @Injectable({ providedIn: 'root' })

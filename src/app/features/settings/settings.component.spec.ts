@@ -1,10 +1,10 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
 
 import { SettingsComponent } from './settings.component';
 import { DiskService } from '../../core/services/disk.service';
-import { ScanProgress, ScanResult, ScanState } from '../../core/models/file.models';
+import { type ScanProgress, type ScanResult, type ScanState } from '../../core/models/file.models';
 
 // ─── Mock Service Factory ─────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ describe('SettingsComponent', () => {
     });
 
     it('deve expor o DiskService via propriedade pública "disk"', () => {
-      expect(component.disk).toBe(mockDisk as any);
+      expect(component.disk).toBe(mockDisk);
     });
   });
 

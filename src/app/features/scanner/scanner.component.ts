@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DiskService } from '../../core/services/disk.service';
@@ -288,7 +288,9 @@ export class ScannerComponent {
     return this.disk.scanState() === 'scanning';
   }
 
-  constructor(public disk: DiskService, private router: Router, private cdr: ChangeDetectorRef) {}
+  readonly disk = inject(DiskService);
+  private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   async browse(): Promise<void> {
     const path = await this.disk.selectDirectory();

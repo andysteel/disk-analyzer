@@ -1,4 +1,4 @@
-use crate::{DiskInfo, FileNode, FileTypeStats, ScanProgress, extension_color, format_size};
+use crate::{extension_color, format_size, DiskInfo, FileNode, FileTypeStats, ScanProgress};
 use log::{debug, error, info};
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -13,7 +13,10 @@ pub async fn scan_directory<R: tauri::Runtime>(
     max_depth: u32,
     app: tauri::AppHandle<R>,
 ) -> Result<FileNode, String> {
-    info!("[scan_directory] Iniciando scan: path='{}', max_depth={}", path, max_depth);
+    info!(
+        "[scan_directory] Iniciando scan: path='{}', max_depth={}",
+        path, max_depth
+    );
 
     let path_clone = path.clone();
     let app_clone = app.clone();
@@ -47,7 +50,11 @@ pub(crate) fn scan_dir_recursive<R: tauri::Runtime>(
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| path.to_string_lossy().to_string());
 
-    debug!("[scan_dir_recursive] depth={} | '{}'", depth, path.display());
+    debug!(
+        "[scan_dir_recursive] depth={} | '{}'",
+        depth,
+        path.display()
+    );
 
     // Emit progress event
     let _ = app.emit(
@@ -111,9 +118,7 @@ pub(crate) fn scan_dir_recursive<R: tauri::Runtime>(
 
     let children: Vec<FileNode> = entries
         .par_iter()
-        .filter_map(|entry| {
-            scan_dir_recursive(&entry.path(), depth + 1, max_depth, app).ok()
-        })
+        .filter_map(|entry| scan_dir_recursive(&entry.path(), depth + 1, max_depth, app).ok())
         .collect();
 
     let mut children_sorted = children;
@@ -409,7 +414,10 @@ mod tests {
 
             assert!(node.is_dir);
             // At max depth, children vec is empty but counts/sizes bubble up
-            assert!(node.children.is_empty(), "Children must be empty at max_depth");
+            assert!(
+                node.children.is_empty(),
+                "Children must be empty at max_depth"
+            );
             assert_eq!(node.file_count, 1);
             assert_eq!(node.size, 512);
         }
@@ -561,8 +569,7 @@ mod tests {
         #[tokio::test]
         async fn empty_directory_returns_empty_vec() {
             let dir = TempDir::new().unwrap();
-            let result =
-                get_file_type_stats(dir.path().to_string_lossy().to_string()).await;
+            let result = get_file_type_stats(dir.path().to_string_lossy().to_string()).await;
             assert!(result.is_ok());
             assert!(result.unwrap().is_empty());
         }
@@ -574,10 +581,9 @@ mod tests {
             fs::write(dir.path().join("b.txt"), vec![0u8; 200]).unwrap();
             fs::write(dir.path().join("c.mp4"), vec![0u8; 500]).unwrap();
 
-            let stats =
-                get_file_type_stats(dir.path().to_string_lossy().to_string())
-                    .await
-                    .unwrap();
+            let stats = get_file_type_stats(dir.path().to_string_lossy().to_string())
+                .await
+                .unwrap();
 
             let txt = stats.iter().find(|s| s.extension == "txt").unwrap();
             assert_eq!(txt.count, 2, "txt count should be 2");
@@ -593,13 +599,15 @@ mod tests {
             fs::write(dir.path().join("Makefile"), vec![0u8; 100]).unwrap();
             fs::write(dir.path().join("Dockerfile"), vec![0u8; 200]).unwrap();
 
-            let stats =
-                get_file_type_stats(dir.path().to_string_lossy().to_string())
-                    .await
-                    .unwrap();
+            let stats = get_file_type_stats(dir.path().to_string_lossy().to_string())
+                .await
+                .unwrap();
 
             let other = stats.iter().find(|s| s.extension == "other");
-            assert!(other.is_some(), "Files without extension must go to 'other'");
+            assert!(
+                other.is_some(),
+                "Files without extension must go to 'other'"
+            );
             assert_eq!(other.unwrap().count, 2);
         }
 
@@ -610,10 +618,9 @@ mod tests {
             fs::write(dir.path().join("huge.mp4"), vec![0u8; 10_000]).unwrap();
             fs::write(dir.path().join("mid.zip"), vec![0u8; 1_000]).unwrap();
 
-            let stats =
-                get_file_type_stats(dir.path().to_string_lossy().to_string())
-                    .await
-                    .unwrap();
+            let stats = get_file_type_stats(dir.path().to_string_lossy().to_string())
+                .await
+                .unwrap();
 
             for i in 1..stats.len() {
                 assert!(
@@ -628,10 +635,9 @@ mod tests {
             let dir = TempDir::new().unwrap();
             fs::write(dir.path().join("image.JPG"), vec![0u8; 100]).unwrap();
 
-            let stats =
-                get_file_type_stats(dir.path().to_string_lossy().to_string())
-                    .await
-                    .unwrap();
+            let stats = get_file_type_stats(dir.path().to_string_lossy().to_string())
+                .await
+                .unwrap();
 
             let jpg = stats.iter().find(|s| s.extension == "jpg");
             assert!(jpg.is_some(), "Extension must be normalised to lowercase");
@@ -642,10 +648,9 @@ mod tests {
             let dir = TempDir::new().unwrap();
             fs::write(dir.path().join("clip.mp4"), vec![0u8; 100]).unwrap();
 
-            let stats =
-                get_file_type_stats(dir.path().to_string_lossy().to_string())
-                    .await
-                    .unwrap();
+            let stats = get_file_type_stats(dir.path().to_string_lossy().to_string())
+                .await
+                .unwrap();
 
             let mp4 = stats.iter().find(|s| s.extension == "mp4").unwrap();
             assert_eq!(mp4.color, "#EF4444");
@@ -663,10 +668,9 @@ mod tests {
                 .unwrap();
             }
 
-            let stats =
-                get_file_type_stats(dir.path().to_string_lossy().to_string())
-                    .await
-                    .unwrap();
+            let stats = get_file_type_stats(dir.path().to_string_lossy().to_string())
+                .await
+                .unwrap();
 
             assert!(
                 stats.len() <= 20,
@@ -680,10 +684,9 @@ mod tests {
             let dir = TempDir::new().unwrap();
             fs::write(dir.path().join("doc.pdf"), vec![0u8; 2048]).unwrap();
 
-            let stats =
-                get_file_type_stats(dir.path().to_string_lossy().to_string())
-                    .await
-                    .unwrap();
+            let stats = get_file_type_stats(dir.path().to_string_lossy().to_string())
+                .await
+                .unwrap();
 
             for entry in &stats {
                 assert!(
@@ -702,8 +705,7 @@ mod tests {
         #[tokio::test]
         async fn empty_directory_returns_empty_vec() {
             let dir = TempDir::new().unwrap();
-            let result =
-                get_large_files(dir.path().to_string_lossy().to_string(), 10).await;
+            let result = get_large_files(dir.path().to_string_lossy().to_string(), 10).await;
             assert!(result.is_ok());
             assert!(result.unwrap().is_empty());
         }
@@ -715,10 +717,9 @@ mod tests {
             fs::write(dir.path().join("medium.bin"), vec![0u8; 500]).unwrap();
             fs::write(dir.path().join("large.bin"), vec![0u8; 1000]).unwrap();
 
-            let files =
-                get_large_files(dir.path().to_string_lossy().to_string(), 10)
-                    .await
-                    .unwrap();
+            let files = get_large_files(dir.path().to_string_lossy().to_string(), 10)
+                .await
+                .unwrap();
 
             assert_eq!(files.len(), 3);
             assert_eq!(files[0].size, 1000);
@@ -730,13 +731,16 @@ mod tests {
         async fn limit_is_respected() {
             let dir = TempDir::new().unwrap();
             for i in 0u8..10 {
-                fs::write(dir.path().join(format!("f{}.bin", i)), vec![i; 100 + i as usize]).unwrap();
+                fs::write(
+                    dir.path().join(format!("f{}.bin", i)),
+                    vec![i; 100 + i as usize],
+                )
+                .unwrap();
             }
 
-            let files =
-                get_large_files(dir.path().to_string_lossy().to_string(), 3)
-                    .await
-                    .unwrap();
+            let files = get_large_files(dir.path().to_string_lossy().to_string(), 3)
+                .await
+                .unwrap();
 
             assert_eq!(files.len(), 3, "Must not exceed requested limit");
         }
@@ -747,10 +751,9 @@ mod tests {
             fs::write(dir.path().join("a.bin"), vec![0u8; 100]).unwrap();
             fs::write(dir.path().join("b.bin"), vec![0u8; 200]).unwrap();
 
-            let files =
-                get_large_files(dir.path().to_string_lossy().to_string(), 1000)
-                    .await
-                    .unwrap();
+            let files = get_large_files(dir.path().to_string_lossy().to_string(), 1000)
+                .await
+                .unwrap();
 
             assert_eq!(files.len(), 2);
         }
@@ -761,10 +764,9 @@ mod tests {
             fs::write(dir.path().join("file.bin"), vec![0u8; 100]).unwrap();
             fs::create_dir(dir.path().join("subdir")).unwrap();
 
-            let files =
-                get_large_files(dir.path().to_string_lossy().to_string(), 10)
-                    .await
-                    .unwrap();
+            let files = get_large_files(dir.path().to_string_lossy().to_string(), 10)
+                .await
+                .unwrap();
 
             assert_eq!(files.len(), 1, "Directories must not be included");
             assert!(!files[0].is_dir);
@@ -775,10 +777,9 @@ mod tests {
             let dir = TempDir::new().unwrap();
             fs::write(dir.path().join("test.txt"), b"content").unwrap();
 
-            let files =
-                get_large_files(dir.path().to_string_lossy().to_string(), 10)
-                    .await
-                    .unwrap();
+            let files = get_large_files(dir.path().to_string_lossy().to_string(), 10)
+                .await
+                .unwrap();
 
             assert!(!files[0].is_dir);
             assert_eq!(files[0].file_count, 1);
@@ -790,10 +791,9 @@ mod tests {
             let content = vec![42u8; 512];
             fs::write(dir.path().join("exact.bin"), &content).unwrap();
 
-            let files =
-                get_large_files(dir.path().to_string_lossy().to_string(), 10)
-                    .await
-                    .unwrap();
+            let files = get_large_files(dir.path().to_string_lossy().to_string(), 10)
+                .await
+                .unwrap();
 
             assert_eq!(files[0].size, 512);
         }
@@ -802,10 +802,9 @@ mod tests {
         async fn nested_files_are_included() {
             let dir = scaffold_test_dir();
 
-            let files =
-                get_large_files(dir.path().to_string_lossy().to_string(), 100)
-                    .await
-                    .unwrap();
+            let files = get_large_files(dir.path().to_string_lossy().to_string(), 100)
+                .await
+                .unwrap();
 
             // scaffold_test_dir creates 4 files total (3 root + 1 nested)
             assert_eq!(files.len(), 4);
@@ -815,10 +814,9 @@ mod tests {
         async fn top_file_is_the_largest_in_tree() {
             let dir = scaffold_test_dir();
 
-            let files =
-                get_large_files(dir.path().to_string_lossy().to_string(), 10)
-                    .await
-                    .unwrap();
+            let files = get_large_files(dir.path().to_string_lossy().to_string(), 10)
+                .await
+                .unwrap();
 
             // large.zip = 2048 bytes should be first
             assert_eq!(files[0].size, 2048);

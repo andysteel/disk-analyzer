@@ -135,7 +135,8 @@ jobs:
           # tauri.conf.json: use MSI-safe version on Windows
           node -e "
             const fs = require('fs');
-            const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            const confPath = 'src-tauri/tauri.conf.json';
+            const conf = JSON.parse(fs.readFileSync(confPath, 'utf8'));
 
             const snapshot = process.env.SNAPSHOT_VERSION;
             const base = snapshot.split('-')[0];

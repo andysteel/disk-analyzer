@@ -139,7 +139,7 @@ jobs:
             const conf = JSON.parse(fs.readFileSync(confPath, 'utf8'));
 
             const snapshot = process.env.SNAPSHOT_VERSION;
-            const base = snapshot.split('-')[0];
+            const base = snapshot.replace(/-snapshot\.\d{8}\.[^.]+$/, '');
 
             let tauriVersion = snapshot;
 

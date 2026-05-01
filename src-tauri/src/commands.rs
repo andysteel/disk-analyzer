@@ -1,3 +1,5 @@
+#![allow(clippy::unnecessary_cast)]
+
 use crate::{extension_color, format_size, DiskInfo, FileNode, FileTypeStats, ScanProgress};
 use log::{debug, error, info};
 use rayon::prelude::*;

@@ -206,6 +206,22 @@ cd src-tauri && cargo test && cd .. && npm run test -- --run
 ```
 
 ---
+## Linting
+
+### Angular - Lint
+
+```bash
+npm run lint
+```
+
+### Rust - Lint
+
+```bash
+# From the project root
+cd src-tauri && cargo fmt --all -- --check
+cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings
+```
+---
 
 ### Interpreting test output
 

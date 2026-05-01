@@ -31,6 +31,7 @@ walkdir = "2"
 rayon = "1"
 tokio = { version = "1", features = ["full"] }
 libc = "0.2.182"
+windows-sys = "0.60.2"
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }

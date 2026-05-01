@@ -124,7 +124,7 @@ pub(crate) fn scan_dir_recursive<R: tauri::Runtime>(
         .collect();
 
     let mut children_sorted = children;
-    children_sorted.sort_by(|a, b| b.size.cmp(&a.size));
+    children_sorted.sort_by_key(|b| std::cmp::Reverse(b.size));
 
     let total_size: u64 = children_sorted.iter().map(|c| c.size).sum();
     let file_count: u64 = children_sorted.iter().map(|c| c.file_count).sum();
@@ -254,7 +254,7 @@ pub async fn get_file_type_stats(path: String) -> Result<Vec<FileTypeStats>, Str
         })
         .collect();
 
-    stats.sort_by(|a, b| b.total_size.cmp(&a.total_size));
+    stats.sort_by_key(|b| std::cmp::Reverse(b.total_size));
     stats.truncate(20); // Top 20 file types
 
     Ok(stats)
@@ -283,7 +283,7 @@ pub async fn get_large_files(path: String, limit: usize) -> Result<Vec<FileNode>
         })
         .collect();
 
-    files.sort_by(|a, b| b.size.cmp(&a.size));
+    files.sort_by_key(|b| std::cmp::Reverse(b.size));
     files.truncate(limit);
 
     Ok(files)

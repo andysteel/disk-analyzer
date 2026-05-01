@@ -208,13 +208,13 @@ cd src-tauri && cargo test && cd .. && npm run test -- --run
 ---
 ## Linting
 
-### Angular - Lint
+### Angular — Lint
 
 ```bash
 npm run lint
 ```
 
-### Rust - Lint
+### Rust — Lint
 
 ```bash
 # From the project root

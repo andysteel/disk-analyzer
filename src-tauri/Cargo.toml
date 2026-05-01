@@ -32,6 +32,9 @@ rayon = "1"
 tokio = { version = "1", features = ["full"] }
 libc = "0.2.182"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.60.2", features = ["Win32_Storage_FileSystem", "Win32_Foundation"] }
+
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
 tempfile = "3"

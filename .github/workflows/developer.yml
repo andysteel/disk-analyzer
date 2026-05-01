@@ -122,6 +122,7 @@ jobs:
         shell: bash
         env:
           SNAPSHOT_VERSION: ${{ needs.snapshot-version.outputs.version }}
+          RUNNER_OS: ${{ runner.os }}
         run: |
           # package.json
           node -e "
@@ -131,12 +132,26 @@ jobs:
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
 
-          # tauri.conf.json
+          # tauri.conf.json: use MSI-safe version on Windows
           node -e "
             const fs = require('fs');
             const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-            conf.version = process.env.SNAPSHOT_VERSION;
-            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+
+            const snapshot = process.env.SNAPSHOT_VERSION;
+            const base = snapshot.split('-')[0];
+
+            let tauriVersion = snapshot;
+
+            if (process.env.RUNNER_OS === 'Windows') {
+              const m = snapshot.match(/-snapshot\.(\d{8})\./);
+              const yyyymmdd = m ? m[1] : '00000000';
+              const numeric = (parseInt(yyyymmdd, 10) % 65535).toString();
+              tauriVersion = `${base}-${numeric}`;
+            }
+
+            conf.version = tauriVersion;
+            fs.writeFileSync(confPath, JSON.stringify(conf, null, 2) + '\n');
+            console.log('tauri.conf.json version set to:', tauriVersion);
           "
 
           echo "✅ Versão aplicada: $SNAPSHOT_VERSION"

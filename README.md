@@ -218,6 +218,7 @@ npm run lint
 
 ```bash
 # From the project root
+cd src-tauri && cargo fmt --all -- --check
 cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings
 ```
 ---

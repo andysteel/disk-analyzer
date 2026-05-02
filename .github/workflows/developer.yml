@@ -160,7 +160,7 @@ jobs:
                 }
               }
 
-              tauriVersion = `${base}-${numeric}`;
+              tauriVersion = base + '-' + numeric;
             }
 
             conf.version = tauriVersion;

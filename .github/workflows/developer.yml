@@ -145,8 +145,21 @@ jobs:
 
             if (process.env.RUNNER_OS === 'Windows') {
               const m = snapshot.match(/-snapshot\.(\d{8})\./);
-              const yyyymmdd = m ? m[1] : '00000000';
-              const numeric = (parseInt(yyyymmdd, 10) % 65535).toString();
+              let numeric = '0';
+
+              if (m) {
+                const yyyymmdd = m[1];
+                const year = parseInt(yyyymmdd.slice(0, 4), 10);
+                const month = parseInt(yyyymmdd.slice(4, 6), 10);
+                const day = parseInt(yyyymmdd.slice(6, 8), 10);
+                const snapshotUtc = Date.UTC(year, month - 1, day);
+                const epochUtc = Date.UTC(2020, 0, 1);
+
+                if (!Number.isNaN(snapshotUtc)) {
+                  numeric = Math.floor((snapshotUtc - epochUtc) / 86400000).toString();
+                }
+              }
+
               tauriVersion = `${base}-${numeric}`;
             }
 
